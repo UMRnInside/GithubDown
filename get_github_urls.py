@@ -12,17 +12,19 @@ class GithubURLParser(SGMLParser):
         self.links = []
         SGMLParser.reset(self)
 
-    def set_repo_info(self, repo_owner, repo_name):
-        self.repo_owner = repo_owner
-        self.repo_name = repo_name
-        self.repourl = "https://github.com/%s/%s/" % (repo_owner, repo_name)
+    def set_repo_info(self, repo_fullname):
+        self.repo_fullname = repo_fullname
+        self.repourl = "https://github.com/%s/" % (repo_fullname,)
 
     def determine_link_type(self, target_link):
         url_components = target_link.split('/')
 
-        if [self.repo_owner, self.repo_name] == url_components[0:2]:
+        lc_repofullname = self.repo_fullname.lower()
+        lc_targetname = "/".join(url_components[1:3]).lower()
+
+        if lc_repofullname == lc_targetname:
             # Not a reference to other repos
-            store_type = url_components[2]
+            store_type = url_components[3]
             if store_type == "blob":
                 # A file
                 return REGULAR_FILE
