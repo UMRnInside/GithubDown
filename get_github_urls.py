@@ -84,7 +84,7 @@ def get_item_list(target_link):
     gparser.feed("\n".join(content))
 
     raw_links = gparser.links
-    anydirs = [(t, u)
+    anydirs = [(t, urlparse.urljoin("https://github.com/", u))
                for (t, u) in raw_links
                if t in (DIR, REF_DIR)]
 
