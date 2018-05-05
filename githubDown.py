@@ -34,6 +34,7 @@ def file_download(target_link, full_filename, method):
 
 def smart_file_download(target_link, full_filename, method="default"):
     dirname, filename = os.path.split(full_filename)
+    logging.info("Downloading %s" % (filename,))
     if not os.path.isdir(dirname):
         if os.path.exists(dirname):
             raise
@@ -86,7 +87,7 @@ def main():
                         dest="dir", default=".",
                         help="work directory set to DIR")
     parser.add_argument("-d", "--debuglevel", type=int,
-                        dest="debuglevel", default=logging.EROR,
+                        dest="debuglevel", default=logging.INFO,
                         help="logging debug level")
     parser.add_argument("-r", "--recursive", action="store_const",
                         dest="recursive", default=False, const=True,
