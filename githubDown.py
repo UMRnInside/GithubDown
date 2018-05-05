@@ -8,8 +8,8 @@ import urlparse
 import requests
 from get_github_urls import get_item_list, REGULAR_FILE, DIR, REF_DIR
 
+LOG_FORMAT = "%(levelname)s %(filename)s[%(lineno)d]:%(message)s"
 CHUNK_SIZE = 1024
-logging.basicConfig(format="%(levelname)s %(filename)s[%(lineno)d]:%(message)s", level=logging.DEBUG)
 
 
 def default_file_download(target_link, full_filename):
@@ -74,3 +74,29 @@ def recursive_download(target_link, store_path=".", git_recursive=True):
 
     for d in dirurls:
         recursive_download(d, store_path, git_recursive)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("-u", "--url", type=str,
+                        dest="repourl", required=True,
+                        help="Github repo url")
+    parser.add_argument("-C", "--directory", type=str,
+                        dest="dir", default=".",
+                        help="work directory set to DIR")
+    parser.add_argument("-d", "--debuglevel", type=int,
+                        dest="debuglevel", default=logging.EROR,
+                        help="logging debug level")
+    parser.add_argument("-r", "--recursive", action="store_const",
+                        dest="recursive", default=False, const=True,
+                        help="act like git clone --recursive (default no)")
+
+    args = parser.parse_args()
+
+    logging.basicConfig(format=LOG_FORMAT, level=args.debuglevel)
+    recursive_download(args.repourl, args.dir, args.recursive)
+
+
+if __name__ == "__main__":
+    main()
