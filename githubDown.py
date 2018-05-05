@@ -2,12 +2,14 @@
 
 import os
 import sys
+import logging
 import argparse
 import urlparse
 import requests
 from get_github_urls import get_item_list, REGULAR_FILE, DIR, REF_DIR
 
 CHUNK_SIZE = 1024
+logging.basicConfig(format="%(levelname)s %(filename)s[%(lineno)d]:%(message)s", level=logging.DEBUG)
 
 
 def default_file_download(target_link, full_filename):
@@ -26,6 +28,7 @@ download_methods = {
 
 def file_download(target_link, full_filename, method):
     real_dlfunc = download_methods[method]
+    logging.debug("Using method " + method)
     return real_dlfunc(target_link, full_filename)
 
 
@@ -34,22 +37,27 @@ def smart_file_download(target_link, full_filename, method="default"):
     if not os.path.isdir(dirname):
         if os.path.exists(dirname):
             raise
+        logging.info("mkdirs %s" % (dirname,))
         os.makedirs(dirname)
 
     file_download(target_link, full_filename, method)
 
 
 def recursive_download(target_link, store_path=".", git_recursive=True):
+    logging.info("Recursively downloading %s" % (target_link,))
+
     dirtypes = (DIR, REF_DIR) if git_recursive else (DIR,)
-    current_path = "."
+    current_path = store_path
     path_s = urlparse.urlparse(target_link).path.split("/")
 
     # ''/'repoowner'/'reponame'/'tree'/'branchname'/'dirname'
     if len(path_s) >= 6:
         local_path = path_s[5:]
-        current_path = os.path.join(store_path, local_path)
+        current_path = os.path.join(store_path, *local_path)
         if not os.path.isdir(current_path):
+            logging.info("mkdir %s" % (current_path,))
             os.makedirs(current_path)
+    logging.info("current store path is %s" % (current_path,))
 
     itemlist = get_item_list(target_link)
     fileurls = [u for (t, u) in itemlist
