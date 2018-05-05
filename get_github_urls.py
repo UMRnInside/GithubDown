@@ -1,9 +1,12 @@
 from sgmllib import SGMLParser
 import urlparse
+import requests
 
 REGULAR_FILE = 0
-FOLDER = 1
-REF_FOLDER = 2
+DIR = 1
+REF_DIR = 2
+RAW_GITHUBUC = "https://raw.githubusercontent.com/"
+ITEM_MARKS = ("css-truncate", "href", "span")
 
 
 class GithubURLParser(SGMLParser):
@@ -29,14 +32,14 @@ class GithubURLParser(SGMLParser):
                 # A file
                 return REGULAR_FILE
             elif store_type == "tree":
-                # A folder
-                return FOLDER
+                # A directory
+                return DIR
             else:
                 raise ValueError("%s is neither file nor folder"
                                  % (store_type,))
         else:
             # A reference to other repo
-            return REF_FOLDER
+            return REF_DIR
 
     def start_a(self, attrs):
         urllist = [v for k, v in attrs if k == "href"]
@@ -44,3 +47,49 @@ class GithubURLParser(SGMLParser):
                           for v in urllist]
 
         self.links.extend(parsed_urllist)
+
+
+def get_raw_download_link(bloburl):
+    url_components = bloburl.split('/')
+
+    # url_components[4] is "blob"
+    (repoowner, reponame) = url_components[1:3]
+    blob = url_components[3]
+    branch = url_components[4]
+    filename = "/".join(url_components[5:])
+
+    if blob != "blob":
+        raise ValueError("only blob is accepted")
+
+    location = "%s/%s/%s/%s" % (repoowner, reponame, branch, filename)
+    final_link = urlparse.urljoin(RAW_GITHUBUC, location)
+
+    return final_link
+
+
+def get_item_list(target_link):
+    resp = requests.get(target_link)
+
+    content = resp.text.split("\n")
+    for i in ITEM_MARKS:
+        content = [line for line in content if i in line]
+
+    path_s = urlparse.urlparse(target_link).path.split("/")
+    (repoowner, reponame) = path_s[1:3]
+    repo_fullname = "%s/%s" % (repoowner, reponame)
+
+    gparser = GithubURLParser()
+    gparser.reset()
+    gparser.set_repo_info(repo_fullname)
+    gparser.feed("\n".join(content))
+
+    raw_links = gparser.links
+    anydirs = [(t, u)
+               for (t, u) in raw_links
+               if t in (DIR, REF_DIR)]
+
+    anyfiles = [(t, get_raw_download_link(u))
+                for (t, u) in raw_links
+                if t == REGULAR_FILE]
+
+    return anydirs + anyfiles
