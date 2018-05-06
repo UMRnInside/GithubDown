@@ -1,6 +1,7 @@
 from sgmllib import SGMLParser
 import urlparse
 import requests
+import logging
 
 REGULAR_FILE = 0
 DIR = 1
@@ -55,8 +56,11 @@ class GithubURLParser(SGMLParser):
 
         itemtype, url = self.pending_link[0]
         if itemtype == REF_DIR:
+            logging.info("Handling git submodule...")
             pos = text.rfind(" @ ")
             name = text[:pos]
+            logging.info("'@' is at %d, text '%s', name '%s'"
+                         % (pos, text, name))
         else:
             name = text
 
@@ -89,7 +93,8 @@ def get_item_list(target_link):
     for i in ITEM_MARKS:
         content = [line for line in content if i in line]
 
-    path_s = urlparse.urlparse(target_link).path.split("/")
+    # Redirection
+    path_s = urlparse.urlparse(resp.url).path.split("/")
     (repoowner, reponame) = path_s[1:3]
     repo_fullname = "%s/%s" % (repoowner, reponame)
 
@@ -99,12 +104,18 @@ def get_item_list(target_link):
     gparser.feed("\n".join(content))
 
     raw_links = gparser.links
-    anydirs = [(t, urlparse.urljoin("https://github.com/", name))
+    logging.debug("Dumping raw links...")
+    logging.debug(repr(raw_links))
+
+    anydirs = [(t, urlparse.urljoin("https://github.com/", u), name)
                for (t, u, name) in raw_links
                if t in (DIR, REF_DIR)]
 
     anyfiles = [(t, get_raw_download_link(u), name)
                 for (t, u, name) in raw_links
                 if t == REGULAR_FILE]
+
+    logging.debug("Dumping result:")
+    logging.debug(repr(anydirs + anyfiles))
 
     return anydirs + anyfiles

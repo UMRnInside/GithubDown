@@ -44,37 +44,45 @@ def smart_file_download(target_link, full_filename, method="default"):
     file_download(target_link, full_filename, method)
 
 
-def recursive_download(target_link, store_path=".", git_recursive=True):
-    logging.info("Recursively downloading %s" % (target_link,))
+def recursive_download(target_link, store_path=".",
+                       git_recursive=True, dirname=None):
+    logging.info("Recursively downloading %s, dirname %s"
+                 % (target_link, str(dirname)))
 
-    dirtypes = (DIR, REF_DIR) if git_recursive else (DIR,)
     current_path = store_path
     path_s = urlparse.urlparse(target_link).path.split("/")
 
     # ''/'repoowner'/'reponame'/'tree'/'branchname'/'dirname'
     if len(path_s) >= 6:
-        local_path = path_s[5:]
+        local_path = path_s[5:] if dirname is None else [dirname, ]
         current_path = os.path.join(store_path, *local_path)
+
         if not os.path.isdir(current_path):
             logging.info("mkdir %s" % (current_path,))
             os.makedirs(current_path)
+
     logging.info("current store path is %s" % (current_path,))
 
     itemlist = get_item_list(target_link)
-    fileurls = [u for (t, u) in itemlist
-                if t == REGULAR_FILE]
-    dirurls = [u for (t, u) in itemlist
-               if t in dirtypes]
+    file_urls_and_names = [(u, n) for (t, u, n) in itemlist
+                           if t == REGULAR_FILE]
+    dir_urls_and_names = [(u, n) for (t, u, n) in itemlist
+                          if t == DIR]
 
-    for url in fileurls:
-        url_s = urlparse.urlparse(url).path.split("/")
-        filename = url_s[-1]
+    ref_dirs = [(u, n) for (t, u, n) in itemlist
+                if t == REF_DIR]
+
+    for (url, filename) in file_urls_and_names:
         file_storepath = os.path.join(current_path, filename)
-
         smart_file_download(url, file_storepath)
 
-    for d in dirurls:
-        recursive_download(d, store_path, git_recursive)
+    for (d, name) in dir_urls_and_names:
+        recursive_download(d, store_path, git_recursive, name)
+
+    if git_recursive:
+        for (url, name) in ref_dirs:
+            d_store_path = os.path.join(store_path, name)
+            recursive_download(url, d_store_path, git_recursive)
 
 
 def main():
