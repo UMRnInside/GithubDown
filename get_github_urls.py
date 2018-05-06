@@ -13,6 +13,7 @@ class GithubURLParser(SGMLParser):
 
     def reset(self):
         self.links = []
+        self.pending_link = []
         SGMLParser.reset(self)
 
     def set_repo_info(self, repo_fullname):
@@ -46,7 +47,21 @@ class GithubURLParser(SGMLParser):
         parsed_urllist = [(self.determine_link_type(v), v)
                           for v in urllist]
 
-        self.links.extend(parsed_urllist)
+        self.pending_link.extend(parsed_urllist)
+
+    def handle_data(self, text):
+        if len(self.pending_link) == 0:
+            return
+
+        itemtype, url = self.pending_link[0]
+        if itemtype == REF_DIR:
+            pos = text.rfind(" @ ")
+            name = text[:pos]
+        else:
+            name = text
+
+        self.pending_link = []
+        self.links.append((itemtype, url, name))
 
 
 def get_raw_download_link(bloburl):
@@ -84,12 +99,12 @@ def get_item_list(target_link):
     gparser.feed("\n".join(content))
 
     raw_links = gparser.links
-    anydirs = [(t, urlparse.urljoin("https://github.com/", u))
-               for (t, u) in raw_links
+    anydirs = [(t, urlparse.urljoin("https://github.com/", name))
+               for (t, u, name) in raw_links
                if t in (DIR, REF_DIR)]
 
-    anyfiles = [(t, get_raw_download_link(u))
-                for (t, u) in raw_links
+    anyfiles = [(t, get_raw_download_link(u), name)
+                for (t, u, name) in raw_links
                 if t == REGULAR_FILE]
 
     return anydirs + anyfiles
