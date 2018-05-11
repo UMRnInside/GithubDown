@@ -77,7 +77,7 @@ def recursive_download(target_link, store_path=".",
         smart_file_download(url, file_storepath)
 
     for (d, name) in dir_urls_and_names:
-        recursive_download(d, store_path, git_recursive, name)
+        recursive_download(d, store_path, git_recursive)
 
     if git_recursive:
         for (url, name) in ref_dirs:
